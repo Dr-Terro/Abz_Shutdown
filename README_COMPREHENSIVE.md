@@ -1,10 +1,10 @@
 # ABZ_Shutdown.efi - ACPI Shutdown EFI Application
 
-A **completely standalone UEFI application** that performs system shutdown via ACPI without any dependencies on rEFInd or other boot loaders.
+A **completely standalone UEFI application** that performs system shutdown via ACPI and can build on Linux, macOS, or Windows by using any available supported GNU-EFI toolchain path.
 
 ## Overview
 
-**ABZ_Shutdown.efi** is a lightweight UEFI utility extracted from the rEFInd boot loader's shutdown functionality (refind/main.c lines 163-663). It provides a clean, ACPI-based method to shut down systems by:
+**ABZ_Shutdown.efi** is a lightweight UEFI utility derived from `grub2fm`'s `halt.c`. It provides a clean, ACPI-based method to shut down systems by:
 
 1. **Locating ACPI tables** - Finds the ACPI Root System Descriptor Pointer (RSDP)
 2. **Parsing ACPI structures** - Reads RSDT, FADT, DSDT, and SSDT tables
@@ -13,8 +13,8 @@ A **completely standalone UEFI application** that performs system shutdown via A
 
 ## Key Features
 
-✅ **Completely Standalone** - Only depends on GNU-EFI, not on rEFInd or any other boot loader
-✅ **Minimal Dependencies** - Just `build-essential` and `gnu-efi` packages
+✅ **Completely Standalone** - Depends on GNU-EFI plus a suitable toolchain
+✅ **Cross-Platform Builder** - `build_shutdown.sh` detects Linux, macOS, and Windows-hosted Bash environments
 ✅ **Multiple Architectures** - Supports x86_64, ia32 (32-bit x86), and aarch64
 ✅ **Easy to Build** - One command: `./build_shutdown.sh`
 ✅ **No Makefile Required** - Bash script handles all compilation and linking
@@ -29,6 +29,14 @@ A **completely standalone UEFI application** that performs system shutdown via A
 cd shutdown_efi
 ./build_shutdown.sh
 ```
+
+On Windows Command Prompt or PowerShell:
+
+```bat
+build_shutdown.bat
+```
+
+The batch wrapper tries Git Bash, MSYS2, and other Windows Bash entry points first, then falls back to WSL when needed.
 
 The binary will be created as **ABZ_Shutdown_x64.efi** (on x86-64 systems).
 
@@ -58,12 +66,26 @@ The binary will be created as **ABZ_Shutdown_x64.efi** (on x86-64 systems).
 - `build_shutdown.sh` - Build script
 
 **System packages:**
+Linux:
 ```bash
 sudo apt-get install build-essential gnu-efi
 ```
 
+macOS:
+```bash
+brew install binutils x86_64-elf-gcc
+```
+
+Windows:
+- Git Bash, MSYS2 Bash, or WSL
+- GNU-EFI headers and libraries in that environment
+- GCC, `ld`, `objcopy`, `ar`, and `ranlib`
+- `build_shutdown.bat` as the Windows entry point
+
+The build script checks common Windows-hosted Bash prefixes such as `/usr`, `/mingw64`, `/ucrt64`, `/clang64`, `/clangarm64`, and `/c/msys64/*`.
+
 **Optional (for Secure Boot signing):**
-- `refind-sbat.csv` - SBAT policy file
+- `abz-shutdown.csv` - SBAT policy file
 
 ### To Run ABZ_Shutdown.efi:
 
@@ -79,6 +101,12 @@ sudo apt-get install build-essential gnu-efi
 ```
 Creates `ABZ_Shutdown_x64.efi` (detects architecture automatically)
 
+### Windows Entry Point
+```bat
+build_shutdown.bat
+```
+Finds `bash.exe` from Git for Windows, MSYS2, or `PATH`, and falls back to WSL so Windows can build with any available supported GNU-EFI toolchain.
+
 ### Clean Build
 ```bash
 CLEAN_BUILD=1 ./build_shutdown.sh
@@ -87,7 +115,7 @@ Removes old build artifacts before building
 
 ### Custom SBAT CSV
 ```bash
-SHUTDOWN_SBAT_CSV=/path/to/custom-sbat.csv ./build_shutdown.sh
+SHUTDOWN_SBAT_CSV=/path/to/abz-shutdown.csv ./build_shutdown.sh
 ```
 Use custom Secure Boot AT policy file
 
@@ -112,8 +140,9 @@ Binary size: ~41 KB (stripped, with sections optimized)
 ```
 shutdown_efi/
 ├── shutdown.c                      # Full source code (528 lines)
-├── build_shutdown.sh              # Standalone build script (215 lines)
-├── Makefile                       # Optional rEFInd integration
+├── build_shutdown.sh              # Standalone build script
+├── build_shutdown.bat            # Windows wrapper for the build script
+├── Makefile                       # Optional legacy external-tree build file
 ├── README.md                      # This documentation
 ├── STANDALONE_REQUIREMENTS.txt    # Quick reference
 └── ABZ_Shutdown_x64.efi           # Compiled binary (ready to use)
@@ -149,6 +178,7 @@ shutdown_efi/
 The `build_shutdown.sh` script provides:
 
 - ✅ **Automatic Architecture Detection** - Detects x86_64, ia32, or aarch64
+- ✅ **Host OS Detection** - Adjusts for Linux, macOS, and Windows-hosted Bash toolchains
 - ✅ **Dependency Checking** - Verifies GNU-EFI is installed
 - ✅ **Colored Output** - Clear [INFO], [WARN], [ERROR] messages
 - ✅ **Error Handling** - Exits gracefully with helpful messages
@@ -175,18 +205,19 @@ The `build_shutdown.sh` script provides:
 - Can still be compiled; just won't perform shutdown
 - Consider alternative shutdown methods for ARM systems
 
-## Building Independently from rEFInd
+## Building Independently
 
-To build ABZ_Shutdown.efi completely separate from rEFInd:
+To build ABZ_Shutdown.efi completely standalone:
 
 ```bash
 # Create a new directory
 mkdir -p ~/abz-shutdown-build
 cd ~/abz-shutdown-build
 
-# Copy just these 2 files
+# Copy the standalone build files
 cp /path/to/shutdown_efi/shutdown.c .
 cp /path/to/shutdown_efi/build_shutdown.sh .
+cp /path/to/shutdown_efi/build_shutdown.bat .
 
 # Make it executable
 chmod +x build_shutdown.sh
@@ -197,7 +228,7 @@ chmod +x build_shutdown.sh
 # Result: ABZ_Shutdown_x64.efi is ready!
 ```
 
-No rEFInd source needed, no additional configuration required.
+No external boot-loader source tree is required.
 
 ## Troubleshooting
 
@@ -210,6 +241,8 @@ sudo apt-get install gnu-efi
 ```bash
 sudo apt-get install build-essential
 ```
+
+On Windows, verify that `build_shutdown.bat` can find Git Bash, MSYS2, or WSL and that the selected environment has GCC/binutils plus GNU-EFI installed.
 
 ### Build fails with "permission denied"
 ```bash
@@ -231,7 +264,7 @@ chmod +x build_shutdown.sh
 - **No Secure Boot Signing by Default** - Binary is unsigned unless SBAT CSV is provided
 - **ACPI Access** - Directly accesses PM control registers (requires UEFI firmware cooperation)
 - **No Authentication** - Executes immediately without prompting
-- **Works with Secure Boot** - Can be signed using existing rEFInd SBAT policy
+- **Works with Secure Boot** - Can include an optional SBAT section
 
 ## Performance
 
@@ -242,19 +275,18 @@ chmod +x build_shutdown.sh
 
 ## License
 
-Extracted from rEFInd which is licensed under the GNU General Public License (GPL) v3.
-See rEFInd project for full licensing details.
+Derived from grub2fm code. Keep the upstream license terms that apply to the imported source.
 
 ## Related Documentation
 
 - [ACPI Specification](https://uefi.org/specifications)
 - [UEFI Specification](https://uefi.org/specifications)
 - [GNU-EFI Documentation](https://sourceforge.net/p/gnu-efi/wiki/Home/)
-- [rEFInd Project](http://www.rodsbooks.com/refind/)
+- [grub2fm Project](https://github.com/a1ive/grub2-filemanager)
 
 ## Contributing & Support
 
-This is a standalone utility derived from rEFInd. For issues:
+This is a standalone utility derived from grub2fm `halt.c`. For issues:
 
 1. Verify GNU-EFI is properly installed
 2. Check that ACPI is enabled on your system
@@ -263,7 +295,7 @@ This is a standalone utility derived from rEFInd. For issues:
 
 ## Summary
 
-**ABZ_Shutdown.efi** is a powerful, completely standalone UEFI application for ACPI-based system shutdown. With just two files and two system packages, you can build a fully functional EFI shutdown utility that works on any ACPI-capable x86/x86-64 system.
+**ABZ_Shutdown.efi** is a powerful, completely standalone UEFI application for ACPI-based system shutdown. With just two files and a supported GNU-EFI toolchain, you can build a fully functional EFI shutdown utility that works on any ACPI-capable x86/x86-64 system.
 
 Perfect for:
 - Custom UEFI applications

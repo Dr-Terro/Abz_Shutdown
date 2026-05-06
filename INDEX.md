@@ -26,7 +26,7 @@ New to this project? Begin with these files in this order:
 **Understand what it does**
 → Open `README_COMPREHENSIVE.md` (section: "Overview")
 
-**Build independently from rEFInd**
+**Build as a standalone project**
 → Open `BUILD_GUIDE.md` (section: "Independent Use")
 
 **See system requirements**
@@ -44,6 +44,7 @@ New to this project? Begin with these files in this order:
 Essential:
   shutdown.c                    Source code (528 lines)
   build_shutdown.sh            Build script (216 lines)
+  build_shutdown.bat           Windows launcher with fallback
 
 Documentation (READ THESE):
   BUILD_GUIDE.md               ⭐ Quick start guide
@@ -58,7 +59,7 @@ Build Artifacts:
   shutdown.o                   Object file
 
 Optional:
-  Makefile                     rEFInd integration
+  Makefile                     Legacy external-tree build file
 ```
 
 ## 🚀 3-Step Quick Start
@@ -67,8 +68,14 @@ Optional:
 # 1. Install dependencies
 sudo apt-get install build-essential gnu-efi
 
+# macOS example
+brew install binutils x86_64-elf-gcc
+
 # 2. Build
 ./build_shutdown.sh
+
+# Windows entry point
+build_shutdown.bat
 
 # 3. Done!
 ls -lh ABZ_Shutdown_x64.efi
@@ -99,7 +106,7 @@ ls -lh ABZ_Shutdown_x64.efi
 **Q: How do I use it?**
 → See BUILD_GUIDE.md "Usage"
 
-**Q: Can I build without rEFInd?**
+**Q: Can I build this standalone?**
 → YES! See BUILD_GUIDE.md "Independent Use"
 
 **Q: What architectures are supported?**
@@ -115,7 +122,7 @@ ls -lh ABZ_Shutdown_x64.efi
 CLEAN_BUILD=1 ./build_shutdown.sh
 
 # Build with custom SBAT
-SHUTDOWN_SBAT_CSV=path/to/sbat.csv ./build_shutdown.sh
+SHUTDOWN_SBAT_CSV=path/to/abz-shutdown.csv ./build_shutdown.sh
 
 # Help (shows dependency checks)
 ./build_shutdown.sh  # Check the output at start
@@ -123,8 +130,8 @@ SHUTDOWN_SBAT_CSV=path/to/sbat.csv ./build_shutdown.sh
 
 ## ✨ Key Features
 
-✅ Completely standalone (no rEFInd required)
-✅ Only needs GNU-EFI
+✅ Completely standalone
+✅ Builds on Linux and macOS
 ✅ Automatic architecture detection
 ✅ Cross-platform (x86_64, ia32, aarch64)
 ✅ Small binary size (41 KB)
@@ -182,7 +189,7 @@ Total time: ~8 minutes
 **Want to customize?**
 → Edit shutdown.c and see shutdown.c comments
 
-**Want to integrate with rEFInd?**
+**Want to use the legacy Makefile path?**
 → Use the provided Makefile
 
 ## 🎁 What You Get
@@ -192,7 +199,7 @@ Total time: ~8 minutes
 - ✅ Standalone build script
 - ✅ Comprehensive documentation
 - ✅ Ready-to-use binary
-- ✅ Makefile for rEFInd integration
+- ✅ Optional Makefile for legacy external-tree builds
 - ✅ Multiple architecture support
 
 ## 🚀 Next Steps
