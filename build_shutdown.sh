@@ -487,7 +487,7 @@ setup_flags() {
             ;;
         aarch64)
             CFLAGS+=(-DEFIAARCH64)
-            FORMAT="-O efi-app-aarch64"
+            FORMAT="-O pei-aarch64-little --subsystem efi-app"
             ;;
     esac
     
