@@ -24,13 +24,18 @@ detects it automatically and prefers it over system locations.
 
 **Windows**
 - Install Git for Windows or MSYS2
-- Install GNU-EFI plus a GCC/binutils toolchain in that Bash environment
+- Install GNU-EFI plus a GCC/binutils toolchain in that Bash environment, OR
+- Install LLVM/clang for ELF cross-compilation (recommended for mingw32 environments)
 - The builder auto-checks common prefixes such as `/usr`, `/mingw64`, `/ucrt64`, `/clang64`, and `/c/msys64/*`
+
+> **Note**: The bundled GNU-EFI libraries are ELF format. mingw32 GCC produces COFF objects, which cannot be linked with ELF libraries. The build script automatically detects mingw32 GCC and switches to a compatible LLVM/clang toolchain if available. Set the `LLVM_PREFIX` environment variable to point to your LLVM installation directory if it's in a non-standard location.
 
 ### 2. Build the Binary
 ```bash
 cd shutdown_efi
-./build_shutdown.sh
+./build_shutdown.sh              # native architecture
+./build_shutdown.sh aarch64      # cross-compile for ARM64
+./build_shutdown.sh ia32         # cross-compile for 32-bit x86
 ```
 
 On Windows Command Prompt or PowerShell:
@@ -83,7 +88,7 @@ make
 ## Common Commands
 
 ```bash
-# Standard build
+# Standard build (native architecture)
 ./build_shutdown.sh
 
 # Windows entry point
@@ -94,6 +99,8 @@ CLEAN_BUILD=1 ./build_shutdown.sh
 
 # Force specific architecture
 ./build_shutdown.sh x86_64
+./build_shutdown.sh ia32
+./build_shutdown.sh aarch64
 
 # Build with custom SBAT signing
 SHUTDOWN_SBAT_CSV=/path/to/abz-shutdown.csv ./build_shutdown.sh
@@ -102,16 +109,20 @@ SHUTDOWN_SBAT_CSV=/path/to/abz-shutdown.csv ./build_shutdown.sh
 ./build_shutdown.sh --help
 ```
 
+**Cross-compilation notes:**
+- For **aarch64** from x86_64: the script defaults to `TOOLCHAIN_PREFIX=aarch64-linux-gnu-` and will prompt to install `gcc-aarch64-linux-gnu` + `binutils-aarch64-linux-gnu` if missing.
+- For **ia32** on x86_64: the native `gcc` handles it with `-m32` automatically.
+
 ## Build Output
 
 ```
-Depending on your architecture:
+All three can be built from a single host:
 ✓ ABZ_Shutdown_x64.efi     (64-bit Intel/AMD systems)
 ✓ ABZ_Shutdown_ia32.efi    (32-bit Intel/AMD systems)
 ✓ ABZ_Shutdown_aa64.efi    (ARM 64-bit systems)
 ```
 
-Size: ~41 KB
+Size: ~41 KB each
 
 ## Usage
 
@@ -135,10 +146,11 @@ EFI_STATUS status = ShellExecuteEx(..., L"ABZ_Shutdown_x64.efi", ...);
 
 ### To Build
 - Ubuntu/Debian: `build-essential`, `gnu-efi`
+- aarch64 cross-compile (Ubuntu/Debian): also `gcc-aarch64-linux-gnu`, `binutils-aarch64-linux-gnu`
 - Fedora: `gcc`, `make`, `gnu-efi-devel`
 - Arch: `base-devel`, `gnu-efi`
 - macOS: GNU-EFI + `binutils` + matching `*-elf-gcc` toolchain
-- Windows: Git Bash, MSYS2, or WSL + GNU-EFI + GCC/binutils toolchain
+- Windows: Git Bash, MSYS2, or WSL + GNU-EFI + GCC/binutils or LLVM/clang toolchain
 
 ### To Run
 - UEFI-capable system
@@ -167,6 +179,16 @@ sudo apt-get install gnu-efi
 ### "Permission denied"
 ```bash
 chmod +x build_shutdown.sh
+```
+
+### aarch64 cross-compilation fails with "cannot represent machine aarch64"
+This means the native (x86_64) linker is being used instead of the cross-linker.
+The script now defaults to `TOOLCHAIN_PREFIX=aarch64-linux-gnu-` automatically and will
+prompt to install missing packages if the cross-toolchain is not found.
+
+```bash
+# Install the cross-toolchain (interactive prompt on next build, or manually):
+sudo apt-get install gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
 ```
 
 ### Build succeeds but binary doesn't work on actual system

@@ -8,12 +8,13 @@ The code inside shutdown.c was borrowed from grub2fm halt.c and can be used to f
 
 ## 🚀 Quick Start
 
-### Termux (Android) - Super Easy!
+### Termux (Android)
 ```bash
 cd Abz_Shutdown
 ./build_shutdown.sh
+./Fix-efi-on-termux.sh
 ```
-✅ **No installation needed!** Bundled GNU-EFI files are included for aarch64 and x86_64. See [TERMUX_QUICKSTART.md](TERMUX_QUICKSTART.md)
+Bundled GNU-EFI files are included, but Termux still needs an `objcopy` that supports EFI targets such as `efi-app-x86_64` or `efi-app-aarch64`. Start with `pkg install build-essential`, then check `objcopy --help | grep efi-app`. If that still shows no EFI targets, use the Debian/Ubuntu proot flow in [TERMUX_QUICKSTART.md](TERMUX_QUICKSTART.md).
 
 ### Linux / macOS and Windows
 ```bash
@@ -44,24 +45,32 @@ Falls back to system gnu-efi or see [BUILD_GUIDE.md](BUILD_GUIDE.md) for platfor
 
 ```bash
 cd Abz_Shutdown
-./build_shutdown.sh
+./build_shutdown.sh          # builds for native architecture
+./build_shutdown.sh aarch64  # cross-compile for ARM64
+./build_shutdown.sh ia32     # cross-compile for 32-bit x86
 ```
 
 The script automatically:
-- Detects your architecture (x86_64, ia32, or aarch64)
+- Detects your architecture (x86_64, ia32, or aarch64) — or uses the explicit target you pass
 - Uses bundled GNU-EFI files (if available for your arch)
 - Uses a repo-local `gnu-efi/` or `gnuefi/` checkout when present
 - Falls back to system gnu-efi installation
+- Verifies that `objcopy` can emit a real EFI binary for the selected target
 - Compiles and links the binary
 - Outputs: `ABZ_Shutdown_<arch>.efi`
 
+**Cross-compiling for aarch64** from an x86_64 host is fully supported. The script defaults to `TOOLCHAIN_PREFIX=aarch64-linux-gnu-` and will prompt to install `gcc-aarch64-linux-gnu` + `binutils-aarch64-linux-gnu` if the cross-toolchain is missing.
+
 ### Platform-Specific
 
-#### Termux (Easiest!)
-No dependencies needed - just run:
+#### Termux
+Start with:
 ```bash
+pkg install build-essential
+objcopy --help | grep efi-app
 ./build_shutdown.sh
 ```
+If `objcopy` does not list an `efi-app-*` target, use a Debian/Ubuntu proot environment and install `build-essential gnu-efi binutils`. See [TERMUX_QUICKSTART.md](TERMUX_QUICKSTART.md) for the full flow.
 See [TERMUX_QUICKSTART.md](TERMUX_QUICKSTART.md) for details.
 
 #### Linux
@@ -91,6 +100,11 @@ Install on Ubuntu/Debian:
 sudo apt-get install build-essential gnu-efi
 ```
 
+For aarch64 cross-compilation, also install:
+```bash
+sudo apt-get install gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
+```
+
 **Requirements on macOS:**
 - GNU-EFI headers and libraries
 - GNU binutils
@@ -108,9 +122,12 @@ now detects it automatically and will use its built artifacts in preference to a
 **Requirements on Windows:**
 - Git Bash, MSYS2 Bash, or WSL
 - GNU-EFI headers and libraries in that environment
-- GCC, `ld`, `objcopy`, `ar`, and `ranlib`
+- GCC, `ld`, `objcopy`, `ar`, and `ranlib` (mingw32 toolchain), OR
+- LLVM/clang with `ld.lld`, `llvm-objcopy`, `llvm-ar`, `llvm-ranlib`
 
 The build script checks common MSYS2-style prefixes automatically, including `/usr`, `/mingw64`, `/ucrt64`, `/clang64`, `/clangarm64`, and `/c/msys64/*`, and `build_shutdown.bat` can fall through to WSL when that is the usable toolchain.
+
+> **Note for mingw32 environments**: The bundled GNU-EFI libraries are in ELF format, but the mingw32 GCC toolchain produces COFF/PE objects. The build script automatically detects this and switches to an LLVM/clang toolchain (clang, ld.lld, llvm-objcopy) for ELF output if available. Set `LLVM_PREFIX` to the directory containing the LLVM tools if they are in a non-standard location.
 
 ### Option 2: Using the Makefile (Legacy external-tree build)
 
@@ -155,10 +172,12 @@ The `build_shutdown.sh` script provides:
 - ✅ Clean build option (`CLEAN_BUILD=1 ./build_shutdown.sh`)
 - ✅ Custom SBAT CSV support
 - ✅ No external makefile dependencies
+- ✅ Cross-compilation support (all three architectures from any host)
+- ✅ Auto-prompt for installing missing aarch64 cross-toolchain packages
 
 **Usage:**
 ```bash
-# Standard build
+# Standard build (native architecture)
 ./build_shutdown.sh
 
 # Windows entry point
@@ -166,6 +185,8 @@ build_shutdown.bat
 
 # Force architecture (optional)
 ./build_shutdown.sh x86_64
+./build_shutdown.sh ia32
+./build_shutdown.sh aarch64
 
 # Use custom SBAT CSV
 SHUTDOWN_SBAT_CSV=abz-shutdown.csv ./build_shutdown.sh
@@ -173,6 +194,10 @@ SHUTDOWN_SBAT_CSV=abz-shutdown.csv ./build_shutdown.sh
 # Clean build
 CLEAN_BUILD=1 ./build_shutdown.sh
 ```
+
+**Cross-compilation notes:**
+- **aarch64** from x86_64: install `gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu`, or let the script prompt you automatically.
+- **ia32** on x86_64: native `gcc` with `-m32` is used automatically when the target and host are both x86.
 
 ## Usage
 
@@ -211,6 +236,6 @@ The application is built using GNU-EFI and includes:
 
 - This utility is x86/x86-64 specific (ARM64 returns FALSE from TryAcpiShutdown)
 - It requires a functioning ACPI implementation on the system
-- It does not require any external tools or scripts beyond the compiler
+- Building a real EFI binary requires an `objcopy` that supports the `efi-app-*` target for the selected architecture
 - The binary can optionally include SBAT section for Secure Boot signing
 - All ACPI parsing is inline with no external library dependencies
